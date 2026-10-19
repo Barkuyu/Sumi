@@ -117,6 +117,13 @@ a{color:var(--accent)}
 .hist .t{min-width:0}
 .hist .t b{display:block}
 .hist .t span{font:500 12px var(--f-mono);color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .acts{display:flex;gap:6px}
+.btn.sm{padding:7px 11px;font-size:13px}
+.btn.danger{color:var(--err);border-color:var(--line)}
+.btn.danger.solid{background:var(--err);color:var(--surface);border-color:var(--err)}
+.hist li.confirm{grid-template-columns:1fr;background:var(--err-soft);border-radius:12px;padding:12px;margin:6px 0;border-top:0}
+.hist li.confirm p{margin:0;color:var(--err);font-size:14px}
+.hist li.confirm .acts{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -166,7 +173,7 @@ a{color:var(--accent)}
     <label class="f">GitHub 權杖（token）<input type="password" id="token" placeholder="ghp_ 開頭的一串字" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
     <label class="check"><input type="checkbox" id="remember" checked> 記在這台裝置，下次不用再貼</label>
     <ol class="how">
-      <li>打開 <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=App%E5%B7%A5%E5%9D%8A" target="_blank" rel="noopener">建立權杖的頁面</a>（會自動勾好 repo 權限）</li>
+      <li>打開 <a href="https://github.com/settings/tokens/new?scopes=repo,delete_repo&amp;description=App%E5%B7%A5%E5%9D%8A" target="_blank" rel="noopener">建立權杖的頁面</a>（會自動勾好 repo 和 delete_repo 權限）</li>
       <li>Expiration 選 <b>No expiration</b>（或你想要的期限）</li>
       <li>拉到最下面按 <b>Generate token</b></li>
       <li>複製 ghp_ 開頭那串，貼到上面</li>
@@ -194,7 +201,9 @@ a{color:var(--accent)}
   </section>
 
   <section class="card">
-    <h2>做過的 App</h2>
+    <h2>我的 App</h2>
+    <p class="note">點名稱可以帶入上面的欄位來更新它；用不到的可以刪除，GitHub 上的專案和網站會一起刪掉。</p>
+    <div class="err" id="histErr" hidden></div>
     <ul class="hist" id="hist"></ul>
   </section>
 </main>
@@ -226,7 +235,7 @@ function renderHome(){
   for(const h of others){
     const a=document.createElement('div');a.className='app';
     a.innerHTML=`<a href="${h.url}" target="_blank" rel="noopener"><div class="ico"><img alt="" src="${h.icon||''}"></div><div class="lbl"></div></a>`;
-    a.querySelector('.lbl').textContent=h.name;home.appendChild(a);
+    a.querySelector('.lbl').textContent=h.name;const im=a.querySelector('img');im.onerror=()=>im.remove();home.appendChild(a);
   }
   const me=document.createElement('div');me.className='app new';
   const ico=document.createElement('div');ico.className='ico';ico.appendChild(iconCanvas(128));
@@ -274,7 +283,7 @@ $('#repo').addEventListener('input',()=>{S.repoEdited=true;update();checkRepoSoo
 /* ---------- 權杖 ---------- */
 const tokEl=$('#token');tokEl.value=store.get('appmaker.token','');
 if(!tokEl.value)$('#ghCard').open=true;
-tokEl.addEventListener('change',async()=>{S.login='';store.del('appmaker.login');saveToken();await whoami(true);update();checkRepoSoon()});
+tokEl.addEventListener('change',async()=>{S.login='';store.del('appmaker.login');saveToken();await whoami(true);update();checkRepoSoon();loadRemote()});
 $('#remember').addEventListener('change',saveToken);
 function saveToken(){if($('#remember').checked&&tokEl.value.trim())store.set('appmaker.token',tokEl.value.trim());else store.del('appmaker.token')}
 async function whoami(quiet){
@@ -426,18 +435,66 @@ function copy(text,btn,el){
   const fb=()=>{if(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}};
   try{navigator.clipboard.writeText(text).then(ok,fb)}catch(e){fb()}
 }
+/* 這個工具本身所在的專案（不能刪，否則工具也會不見） */
+const HOST_REPO=location.hostname.endsWith('github.io')?(location.pathname.split('/')[1]||'').toLowerCase():'';
+let confirmRepo='';
+function saveHist(){store.set('appmaker.history',hist)}
 function renderHist(){
   const ul=$('#hist');ul.innerHTML='';
-  if(!hist.length){ul.innerHTML='<li><span></span><span class="note">還沒有做過 App。</span></li>';return}
+  if(!hist.length){ul.innerHTML='<li><span></span><span class="note">還沒有任何 App。</span></li>';return}
   for(const h of hist){const li=document.createElement('li');
-    li.innerHTML=`<div class="ico"><img alt=""></div><div class="t"><b></b><span></span></div><button class="btn" type="button">複製</button>`;
-    li.querySelector('img').src=h.icon||'';li.querySelector('b').textContent=h.name;li.querySelector('span').textContent=h.url;
-    li.querySelector('button').addEventListener('click',e=>copy(h.url,e.currentTarget,li.querySelector('span')));
+    if(confirmRepo===h.repo){
+      li.className='confirm';
+      li.innerHTML=`<p></p><div class="acts"><button class="btn sm danger solid" type="button" data-a="yes">確定刪除</button><button class="btn sm" type="button" data-a="no">取消</button></div>`;
+      li.querySelector('p').textContent=`要刪除「${h.name}」嗎？GitHub 上的「${h.repo}」專案、裡面的 HTML 和網站會全部刪掉，無法復原。`;
+      li.querySelector('[data-a=yes]').addEventListener('click',e=>removeApp(h,e.currentTarget));
+      li.querySelector('[data-a=no]').addEventListener('click',()=>{confirmRepo='';renderHist()});
+      ul.appendChild(li);continue;
+    }
+    li.innerHTML=`<div class="ico"><img alt=""></div><div class="t"><b></b><span></span></div><div class="acts"><button class="btn sm" type="button" data-a="copy">複製</button><button class="btn sm danger" type="button" data-a="del">刪除</button></div>`;
+    const img=li.querySelector('img');img.src=h.icon||'';img.onerror=()=>{img.remove()};
+    li.querySelector('b').textContent=h.name;li.querySelector('span').textContent=h.url;
+    li.querySelector('[data-a=copy]').addEventListener('click',e=>copy(h.url,e.currentTarget,li.querySelector('span')));
+    li.querySelector('[data-a=del]').addEventListener('click',()=>{
+      $('#histErr').hidden=true;
+      if(HOST_REPO&&h.repo.toLowerCase()===HOST_REPO){showHistErr(`「${h.repo}」裡面放著 App 工坊本身，刪掉的話這個工具也會不見，所以不能在這裡刪除。`);return}
+      confirmRepo=h.repo;renderHist()});
     li.querySelector('.t').addEventListener('click',()=>{$('#repo').value=h.repo;$('#appName').value=h.name;S.repoEdited=S.nameEdited=true;update();checkRepoSoon();$('#repo').scrollIntoView({block:'center'})});
     li.querySelector('.t').style.cursor='pointer';ul.appendChild(li)}
 }
+function showHistErr(m){const e=$('#histErr');e.textContent=m;e.hidden=!m}
+async function removeApp(h,btn){
+  showHistErr('');
+  if(!tokEl.value.trim()){showHistErr('要先在「GitHub 連線」貼上權杖才能刪除。');$('#ghCard').open=true;return}
+  btn.disabled=true;btn.textContent='刪除中…';
+  try{
+    const login=S.login||await whoami(false);
+    const r=await gh('DELETE',`/repos/${login}/${h.repo}`);
+    if(r.status===403)throw new Error('權杖沒有刪除權限。請重新建立一個權杖（打開「GitHub 連線」裡的連結，會自動勾好 delete_repo），再貼上來。');
+    if(!r.ok&&r.status!==404)throw new Error(ghMsg(r,'刪除專案'));
+    hist=hist.filter(x=>x.repo.toLowerCase()!==h.repo.toLowerCase());saveHist();confirmRepo='';renderHist();renderHome();
+    showHistErr('');const n=$('#histErr');n.hidden=false;n.style.background='var(--accent-soft)';n.style.color='var(--accent)';
+    n.textContent=`已刪除「${h.name}」。手機主畫面上的圖示要自己長按移除。`;
+    setTimeout(()=>{n.hidden=true;n.style.background='';n.style.color=''},6000);
+  }catch(e){btn.disabled=false;btn.textContent='確定刪除';showHistErr(e.message||String(e))}
+}
+/* 從 GitHub 讀出所有有開網站的專案，補進清單 */
+async function loadRemote(){
+  if(!S.login)return;
+  const r=await gh('GET','/user/repos?per_page=100&type=owner&sort=pushed').catch(()=>null);
+  if(!r||!r.ok||!Array.isArray(r.data))return;
+  const live=r.data.filter(x=>x.has_pages&&x.name.toLowerCase()!==`${S.login.toLowerCase()}.github.io`);
+  const names=new Set(r.data.map(x=>x.name.toLowerCase()));
+  hist=hist.filter(h=>names.has(h.repo.toLowerCase()));
+  for(const x of live){
+    if(hist.some(h=>h.repo.toLowerCase()===x.name.toLowerCase()))continue;
+    const url=`https://${S.login.toLowerCase()}.github.io/${x.name}/`;
+    hist.push({name:x.description||x.name,repo:x.name,url,icon:url+'icon-192.png'});
+  }
+  saveHist();renderHist();renderHome();
+}
 renderHist();setGhChip();update();
-if(tokEl.value)whoami(true).then(()=>{update();checkRepoSoon()});
+if(tokEl.value)whoami(true).then(()=>{update();checkRepoSoon();loadRemote()});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 })();
 </script>
