@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style id="app-lock">html{-webkit-text-size-adjust:100%;text-size-adjust:100%}:where(html,body,*){touch-action:manipulation}</style>
+<script id="app-lock-js">(function(){var s={passive:false},p=function(e){e.preventDefault()};
+['gesturestart','gesturechange','gestureend'].forEach(function(t){document.addEventListener(t,p,s)});
+document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault()},s);
+document.addEventListener('dblclick',p,s);
+addEventListener('wheel',function(e){if(e.ctrlKey)e.preventDefault()},s);
+addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&/^[=+\-0]$/.test(e.key))e.preventDefault()});})();</script>
+<title>HTML➡️APP</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HTML➡️APP">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#fde9f2">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 版面：粉彩天空背景上的一張張「步驟卡」，一次只顯示一個畫面（首頁 → 1 → 2 → 3 →（4）→ 製作中 → 完成），人物貼圖陪著每一步。 */
+:root{
+  --ink:#3d2b31; --muted:#7d6a71; --paper:#ffffff; --line:#f3dfe7;
+  --pink:#ff4f8b; --pink-d:#d9306c; --pink-t:#ffe3ee;
+  --orange:#ff9f1c; --orange-d:#d97c00; --orange-t:#fff0d9;
+  --yellow:#ffd23f; --yellow-t:#fff7d1;
+  --green:#2dbd5a; --green-d:#1d9442; --green-t:#ddf7e5;
+  --blue:#3b8bff; --blue-d:#1f68d6; --blue-t:#e1eeff;
+  --purple:#9b5cff; --purple-d:#7a3ce0; --purple-t:#efe5ff;
+  --err:#d62f4b; --err-t:#ffe4e8;
+  --sky1:#fde9f2; --sky2:#e6f3ff; --sky3:#fff6da;
+  --f:"Chiron GoRound TC","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{font:500 16px/1.6 var(--f);color:var(--ink);background:linear-gradient(170deg,var(--sky1) 0%,var(--sky2) 48%,var(--sky3) 100%) fixed;background-color:var(--sky1)}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+
+/* 背景裝飾：雲、星星、愛心 */
+.deco{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.cloud{position:absolute;width:180px;height:60px;border-radius:60px;background:rgba(255,255,255,.75);filter:blur(1px)}
+.cloud::before,.cloud::after{content:"";position:absolute;background:inherit;border-radius:50%}
+.cloud::before{width:80px;height:80px;left:26px;top:-38px}
+.cloud::after{width:60px;height:60px;left:92px;top:-26px}
+.deco svg{position:absolute}
+
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* 頂列：回首頁 + 步驟點 */
+.bar{display:flex;align-items:center;gap:12px;min-height:48px;margin-bottom:8px}
+.home-btn{width:48px;height:48px;border-radius:50%;border:3px solid #fff;background:var(--yellow);font-size:22px;box-shadow:0 4px 0 #e0b21c;cursor:pointer;display:grid;place-items:center;flex:none}
+.dots{display:flex;gap:8px;align-items:center;flex:1;justify-content:center;padding-right:60px}
+.dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:900 14px var(--f);color:#fff;background:#e7d7de;border:3px solid #fff}
+.dot.on{transform:scale(1.15);box-shadow:0 3px 0 rgba(61,43,49,.18)}
+.dot.c1.on,.dot.c1.past{background:var(--pink)}
+.dot.c2.on,.dot.c2.past{background:var(--orange)}
+.dot.c3.on,.dot.c3.past{background:var(--green)}
+.dot.c4.on,.dot.c4.past{background:var(--blue)}
+.dot.past{opacity:.55}
+.dash{width:14px;height:3px;border-radius:3px;background:#fff}
+
+.screen{display:flex;flex-direction:column;gap:18px;animation:pop .35s ease}
+@keyframes pop{from{transform:translateY(10px)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.screen{animation:none}}
+
+/* 首頁 */
+.hero{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding-top:4px}
+.duo{display:flex;justify-content:space-between;width:100%;max-width:400px;align-items:flex-end}
+.sticker{width:96px;aspect-ratio:1;max-width:100%;border-radius:50%;border:5px solid #fff;overflow:hidden;box-shadow:0 6px 16px rgba(61,43,49,.15);background:#fff;flex:none}
+.sticker img{width:100%;height:100%;object-fit:cover;display:block}
+.sticker.l{transform:rotate(-7deg)}
+.sticker.r{transform:rotate(7deg)}
+.sticker.big{width:120px}
+.title{margin:0;font:900 clamp(40px,12.5vw,60px)/1.05 var(--f);letter-spacing:.01em;white-space:nowrap}
+.title span{-webkit-text-stroke:8px #fff;paint-order:stroke fill;text-shadow:0 5px 0 rgba(61,43,49,.14)}
+.title .arrow{-webkit-text-stroke:0;font-size:.7em;vertical-align:.12em;margin:0 .04em}
+.bubble{position:relative;background:#fff;border:3px dashed #ffb3cb;border-radius:28px;padding:14px 18px;font-size:15.5px;line-height:1.8;max-width:420px}
+.hl{padding:1px 8px;border-radius:8px;font-weight:700;white-space:nowrap}
+.hl.p{background:var(--pink-t);color:var(--pink-d)}
+.hl.y{background:var(--yellow-t);color:#8a6a00}
+.hl.b{background:var(--blue-t);color:var(--blue-d)}
+.menu{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.gh-line{display:flex;justify-content:center}
+
+/* 糖果按鈕 */
+.candy{--c:var(--pink);--d:var(--pink-d);display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:3px solid #fff;border-radius:999px;padding:15px 22px;background:var(--c);color:#fff;font:900 19px/1.2 var(--f);letter-spacing:.04em;box-shadow:0 6px 0 var(--d),0 10px 20px rgba(61,43,49,.12);cursor:pointer;text-decoration:none;text-align:center}
+.candy:active{transform:translateY(3px);box-shadow:0 3px 0 var(--d)}
+.candy:disabled{filter:grayscale(.7);opacity:.5;cursor:not-allowed;transform:none}
+.candy.blue{--c:var(--blue);--d:var(--blue-d)}
+.candy.green{--c:var(--green);--d:var(--green-d)}
+.candy.orange{--c:var(--orange);--d:var(--orange-d)}
+.candy.purple{--c:var(--purple);--d:var(--purple-d)}
+.candy.soft{--c:#fff;--d:#ecd9e1;color:var(--ink);border-color:#fff}
+.candy.sm{font-size:15px;padding:10px 16px;box-shadow:0 4px 0 var(--d)}
+.nav{display:flex;gap:12px}
+.nav .soft{flex:0 0 auto;width:auto}
+.chip{display:inline-flex;align-items:center;gap:6px;font:700 13px var(--f);padding:6px 14px;border-radius:999px;background:#fff;border:2px solid var(--line);color:var(--muted);cursor:pointer}
+.chip.ok{background:var(--green-t);border-color:transparent;color:var(--green-d)}
+.chip.warn{background:var(--yellow-t);border-color:transparent;color:#8a6a00}
+.chip.new{background:var(--blue-t);border-color:transparent;color:var(--blue-d)}
+
+/* 步驟卡 */
+.card{--c:var(--pink);--t:var(--pink-t);position:relative;background:var(--paper);border:3px solid var(--t);border-radius:28px;padding:18px;box-shadow:0 6px 0 var(--t);display:flex;flex-direction:column;gap:14px}
+.card.c2{--c:var(--orange);--t:var(--orange-t)}
+.card.c3{--c:var(--green);--t:var(--green-t)}
+.card.c4{--c:var(--blue);--t:var(--blue-t)}
+.card.c5{--c:var(--purple);--t:var(--purple-t)}
+.card-h{display:flex;align-items:center;gap:12px;margin:-18px -18px 0;padding:14px 120px 14px 16px;background:var(--t);border-radius:25px 25px 0 0;min-height:76px}
+.num{width:46px;height:46px;border-radius:50%;background:var(--c);color:#fff;font:900 24px var(--f);display:grid;place-items:center;border:4px solid #fff;flex:none;box-shadow:0 3px 0 rgba(61,43,49,.12)}
+.card-h h2{margin:0;font:900 24px/1.2 var(--f);text-wrap:balance}
+.card .sticker{position:absolute;right:12px;top:-22px;width:100px}
+.lead{margin:0;color:var(--muted);font-size:15px}
+
+.drop{position:relative;border:3px dashed var(--c);border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;background:var(--t);cursor:pointer;min-height:110px}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop .art{width:78px;height:78px;flex:none;display:grid;place-items:center}
+.drop .art img,.drop .art canvas{width:78px;height:78px;border-radius:18px;object-fit:cover;border:3px solid #fff;box-shadow:0 3px 8px rgba(61,43,49,.15)}
+.drop .t{min-width:0;flex:1}
+.drop .t b{display:block;font:900 18px/1.3 var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drop .t small{display:block;color:var(--muted);font-size:13.5px}
+.drop.done{border-style:solid;background:#fff}
+.drop:focus-within{outline:3px solid var(--c);outline-offset:3px}
+
+.alt{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.alt input[type=text]{width:66px;text-align:center;font:900 18px var(--f)}
+.alt input[type=color]{width:48px;height:44px;border:3px solid #fff;border-radius:14px;background:var(--t);padding:2px;box-shadow:0 0 0 2px var(--line)}
+.preview{display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,#bfe0ff,#ffd6e6);border-radius:22px;padding:14px 16px}
+.preview .ico{width:68px;height:68px;border-radius:16px;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.18);flex:none}
+.preview .ico canvas{width:100%;height:100%;display:block}
+.preview .lbl{font:700 14px var(--f);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+label.f{display:flex;flex-direction:column;gap:6px;font:700 14px var(--f);color:var(--ink)}
+label.f small{font-weight:500;color:var(--muted)}
+input[type=text],input[type=password]{font:500 17px var(--f);color:var(--ink);background:#fff;border:3px solid var(--t);border-radius:16px;padding:12px 14px;width:100%}
+input[type=text]:focus,input[type=password]:focus{border-color:var(--c);outline:none}
+.url{font:500 13.5px/1.6 var(--mono);color:var(--muted);word-break:break-all;background:var(--t);border-radius:14px;padding:10px 12px}
+.url b{color:var(--ink)}
+.note{margin:0;font-size:13px;color:var(--muted)}
+.how{margin:0;padding-left:22px;font-size:14.5px}
+.how li{margin:4px 0}
+.how a{color:var(--blue-d);font-weight:700}
+.check{display:flex;gap:8px;align-items:center;font-size:14.5px}
+.check input{width:20px;height:20px;accent-color:var(--blue)}
+.banner{background:var(--yellow-t);border-radius:16px;padding:10px 14px;font-size:14.5px}
+.err{background:var(--err-t);color:var(--err);border-radius:16px;padding:12px 14px;font-size:14.5px}
+.okmsg{background:var(--green-t);color:var(--green-d);border-radius:16px;padding:12px 14px;font-size:14.5px}
+
+/* 製作中 */
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;color:var(--muted);font-size:15.5px}
+.steps li::before{content:"";width:22px;height:22px;margin-top:2px;border-radius:50%;border:4px solid #ecdde3;background:#fff}
+.steps li.run{color:var(--ink);font-weight:700}
+.steps li.run::before{border-color:var(--purple);border-top-color:#ecdde3;animation:spin .8s linear infinite}
+.steps li.ok{color:var(--ink)}
+.steps li.ok::before{content:"✓";display:grid;place-items:center;color:#fff;font:900 13px var(--f);background:var(--green);border-color:var(--green)}
+.steps li.bad{color:var(--err);font-weight:700}
+.steps li.bad::before{content:"!";display:grid;place-items:center;color:#fff;font:900 13px var(--f);background:var(--err);border-color:var(--err)}
+.steps small{display:block;font-weight:500;color:var(--muted);font-size:13px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.steps li.run::before{animation:none;border-top-color:var(--purple)}}
+
+/* 完成 */
+.yay{display:flex;align-items:center;gap:12px}
+.yay .cloudbox{flex:1;background:var(--yellow-t);border:3px solid #fff;border-radius:30px;padding:14px 16px;font:900 15px/1.6 var(--f);box-shadow:0 4px 0 #f3e3a5;min-width:0}
+.yay .cloudbox big{display:block;font-size:30px;line-height:1.2;color:var(--pink)}
+.bigurl{font:700 16px/1.5 var(--mono);word-break:break-all;background:var(--purple-t);border-radius:16px;padding:14px;text-align:center;user-select:all;-webkit-user-select:all}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.guide{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--t);border-radius:20px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:14px;font-weight:700}
+.tile .n{font:900 13px var(--f);color:#fff;background:var(--c);border-radius:999px;padding:2px 10px}
+.tile svg{width:56px;height:56px}
+.homebig{font-size:22px}
+
+/* 我的 App */
+.apps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.apps li{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;background:var(--t);border-radius:20px;padding:10px 12px}
+.apps .ico{width:56px;height:56px;border-radius:14px;background:#fff;overflow:hidden;display:grid;place-items:center;font:900 22px var(--f);color:var(--blue)}
+.apps .ico img{width:100%;height:100%;object-fit:cover}
+.apps .t{min-width:0;cursor:pointer}
+.apps .t b{display:block;font:900 17px/1.3 var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apps .t span{display:block;font:500 12px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apps .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.apps .acts .candy{width:auto;flex:1 1 90px}
+.apps li.confirm{background:var(--err-t);grid-template-columns:1fr}
+.apps li.confirm p{margin:0;color:var(--err);font-size:14.5px;font-weight:700}
+.candy.red{--c:var(--err);--d:#a8192f}
+</style>
+</head>
+<body>
+<div class="deco" aria-hidden="true">
+  <div class="cloud" style="left:-60px;top:16%"></div>
+  <div class="cloud" style="right:-80px;top:44%;transform:scale(.8)"></div>
+  <div class="cloud" style="left:-40px;bottom:6%;transform:scale(1.1)"></div>
+  <svg viewBox="0 0 24 24" style="left:8%;top:30%;width:22px" fill="#ffd23f"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg>
+  <svg viewBox="0 0 24 24" style="right:7%;top:12%;width:26px" fill="#ffd23f"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg>
+  <svg viewBox="0 0 24 24" style="right:12%;bottom:22%;width:20px" fill="#ffd23f"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg>
+  <svg viewBox="0 0 24 24" style="left:5%;top:62%;width:22px" fill="#ff7aa6"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>
+  <svg viewBox="0 0 24 24" style="right:5%;top:70%;width:18px" fill="#ff7aa6"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>
+</div>
+
+<main class="wrap">
+  <div class="bar" id="bar" hidden>
+    <button class="home-btn" id="toHome" aria-label="回首頁">🏠</button>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- 首頁 -->
+  <section class="screen" id="s-home">
+    <div class="hero">
+      <div class="duo">
+        <div class="sticker l"><img src="img/girl.png" alt=""></div>
+        <div class="sticker r"><img src="img/boy.png" alt=""></div>
+      </div>
+      <h1 class="title" aria-label="HTML 轉 APP"><span style="color:#ff4f8b">H</span><span style="color:#ff9f1c">T</span><span style="color:#ffc21a">M</span><span style="color:#2dbd5a">L</span><span class="arrow">➡️</span><span style="color:#3b8bff">A</span><span style="color:#9b5cff">P</span><span style="color:#ff4f8b">P</span></h1>
+      <div class="bubble">選一個 <span class="hl p">HTML 檔</span>和<span class="hl p">一張圖</span>，按<span class="hl p">「做成 App」</span>，它就會上傳到你的 <span class="hl y">GitHub</span>，最後給你網址。用 <span class="hl b">Safari</span> 打開網址，就能加到主畫面。</div>
+    </div>
+    <div class="menu">
+      <button class="candy" id="startNew">✨ 做新的 App</button>
+      <button class="candy blue" id="openApps">📱 我的 App</button>
+      <div class="gh-line"><button class="chip" id="ghChip" type="button">GitHub：檢查中…</button></div>
+    </div>
+  </section>
+
+  <!-- 1 程式檔 -->
+  <section class="screen" id="s-1" hidden>
+    <div class="card c1">
+      <div class="card-h"><span class="num">1</span><h2>程式檔</h2></div>
+      <div class="sticker"><img src="img/boy2.png" alt=""></div>
+      <div class="banner" id="updBanner" hidden></div>
+      <p class="lead">選擇 HTML 檔，Claude 給你的 .html 檔都可以。</p>
+      <div class="drop" id="htmlDrop">
+        <div class="art" aria-hidden="true"><svg viewBox="0 0 80 80" width="78" height="78"><path d="M16 6h34l16 16v50a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z" fill="#fff" stroke="#3d2b31" stroke-width="3"/><path d="M50 6v16h16" fill="#eee" stroke="#3d2b31" stroke-width="3" stroke-linejoin="round"/><path d="M30 32l-8 7 8 7M46 32l8 7-8 7M41 29l-6 20" fill="none" stroke="#3d2b31" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="54" width="58" height="18" rx="5" fill="#ff4f8b" stroke="#fff" stroke-width="2"/><text x="35" y="67.5" text-anchor="middle" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-weight="900" font-size="12" fill="#fff">HTML</text></svg></div>
+        <div class="t"><b id="htmlName">點這裡選擇 HTML 檔</b><small id="htmlInfo">會自動讀出 App 的名字</small></div>
+        <input type="file" id="htmlFile" accept=".html,.htm,text/html" aria-label="選擇 HTML 檔">
+      </div>
+    </div>
+    <div class="nav"><button class="candy soft sm" data-go="home">‹ 首頁</button><button class="candy" id="next1" disabled>下一步 ›</button></div>
+  </section>
+
+  <!-- 2 圖示 -->
+  <section class="screen" id="s-2" hidden>
+    <div class="card c2">
+      <div class="card-h"><span class="num">2</span><h2>準備圖片</h2></div>
+      <div class="sticker"><img src="img/girl.png" alt=""></div>
+      <p class="lead">選一張你喜歡的圖片做為 App 的圖示，會自動裁成正方形。</p>
+      <div class="drop" id="imgDrop">
+        <div class="art" id="imgArt" aria-hidden="true"><svg viewBox="0 0 80 80" width="78" height="78"><rect x="8" y="12" width="64" height="56" rx="8" fill="#fff" stroke="#3d2b31" stroke-width="3" transform="rotate(-6 40 40)"/><g transform="rotate(-6 40 40)"><rect x="14" y="18" width="52" height="44" rx="4" fill="#bfe6ff"/><circle cx="54" cy="29" r="6" fill="#ffd23f"/><path d="M14 62l16-20 12 13 8-8 16 15z" fill="#5cc66e"/></g></svg></div>
+        <div class="t"><b id="imgName">點這裡選擇圖片</b><small>JPG、PNG 都可以</small></div>
+        <input type="file" id="imgFile" accept="image/*" aria-label="選擇圖示圖片">
+      </div>
+      <div class="alt">沒有圖片時，用文字當圖示：
+        <input type="text" id="glyph" maxlength="2" value="A" aria-label="圖示文字">
+        <input type="color" id="glyphColor" value="#ff4f8b" aria-label="圖示底色">
+        <button type="button" class="chip" id="clearImg" hidden>改用文字</button>
+      </div>
+      <div class="preview" aria-label="主畫面預覽"><div class="ico" id="pvIco"></div><div class="lbl" id="pvLbl">你的 App</div></div>
+    </div>
+    <div class="nav"><button class="candy soft sm" data-go="1">‹ 上一步</button><button class="candy orange" data-go="3">下一步 ›</button></div>
+  </section>
+
+  <!-- 3 名稱與網址 -->
+  <section class="screen" id="s-3" hidden>
+    <div class="card c3">
+      <div class="card-h"><span class="num">3</span><h2>名稱與網址</h2></div>
+      <div class="sticker"><img src="img/s5.png" alt=""></div>
+      <label class="f">App 名稱 <small>主畫面圖示下面顯示的字</small><input type="text" id="appName" placeholder="例如：蘇米比一比"></label>
+      <label class="f">專案名稱 <small>英文、數字、- 都可以，會變成網址的一部分</small><input type="text" id="repo" placeholder="例如：Sumi" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <div class="url">網址會是：<b id="urlPreview">https://你的帳號.github.io/專案名稱/</b></div>
+      <div><span class="chip" id="repoChip" hidden></span></div>
+      <p class="note">專案名稱跟做過的 App 一樣，就會更新那個 App；不一樣就會開一個新的。</p>
+    </div>
+    <div class="nav"><button class="candy soft sm" data-go="2">‹ 上一步</button><button class="candy green" id="go3" disabled>做成 App ✨</button></div>
+  </section>
+
+  <!-- 4 GitHub 連線（只有沒連線時才出現） -->
+  <section class="screen" id="s-4" hidden>
+    <div class="card c4">
+      <div class="card-h"><span class="num">4</span><h2>GitHub 連線</h2></div>
+      <div class="sticker"><img src="img/boy.png" alt=""></div>
+      <p class="lead">第一次使用要先連上你的 GitHub，之後就會自動跳過這一步。</p>
+      <ol class="how">
+        <li>打開 <a href="https://github.com/settings/tokens/new?scopes=repo,delete_repo&amp;description=HTML%E2%9E%A1APP" target="_blank" rel="noopener">建立權杖的頁面</a>（權限會自動勾好）</li>
+        <li>Expiration 選 <b>No expiration</b></li>
+        <li>拉到最下面按 <b>Generate token</b></li>
+        <li>複製 ghp_ 開頭那串，貼到下面</li>
+      </ol>
+      <label class="f">GitHub 權杖<input type="password" id="token" placeholder="ghp_ 開頭的一串字" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <label class="check"><input type="checkbox" id="remember" checked> 記在這台裝置，下次不用再貼</label>
+      <div class="err" id="err4" hidden></div>
+      <p class="note">權杖就像密碼，不要給別人。只存在這台裝置，也只會送到 GitHub。</p>
+    </div>
+    <div class="nav" id="nav4wiz"><button class="candy soft sm" data-go="3">‹ 上一步</button><button class="candy blue" id="go4">做成 App ✨</button></div>
+    <div class="nav" id="nav4home" hidden><button class="candy blue" id="save4">連線並回首頁</button></div>
+  </section>
+
+  <!-- 製作中 -->
+  <section class="screen" id="s-run" hidden>
+    <div class="card c5">
+      <div class="card-h"><span class="num">⏳</span><h2>製作中…</h2></div>
+      <div class="sticker"><img src="img/boy2.png" alt=""></div>
+      <ul class="steps" id="steps"></ul>
+      <div class="err" id="errRun" hidden></div>
+    </div>
+    <div class="nav" id="runNav" hidden><button class="candy soft sm" data-go="3">‹ 回去修改</button><button class="candy purple" id="retry">再試一次</button></div>
+  </section>
+
+  <!-- 完成 -->
+  <section class="screen" id="s-done" hidden>
+    <div class="yay">
+      <div class="sticker big l"><img src="img/girl2.png" alt=""></div>
+      <div class="cloudbox"><big>完成！</big><span id="doneMsg">你的網頁已經變成 App 了，可以加到主畫面囉！</span></div>
+    </div>
+    <div class="card c5">
+      <div class="bigurl" id="doneUrl"></div>
+      <div class="two">
+        <button class="candy sm" id="copyUrl">複製網址</button>
+        <a class="candy blue sm" id="openUrl" target="_blank" rel="noopener">打開看看</a>
+      </div>
+      <p class="note" id="doneNote"></p>
+      <div class="guide">
+        <div class="tile" style="--c:var(--purple);--t:var(--purple-t)"><span class="n">5</span><svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="25" fill="#3b8bff" stroke="#fff" stroke-width="3"/><circle cx="28" cy="28" r="19" fill="#e9f3ff"/><path d="M28 28l10-12-6 14z" fill="#ff4f6d"/><path d="M28 28l-10 12 6-14z" fill="#9aa7b8"/></svg>用 Safari<br>打開網址</div>
+        <div class="tile" style="--c:var(--pink);--t:var(--pink-t)"><span class="n">6</span><svg viewBox="0 0 56 56"><rect x="4" y="8" width="48" height="40" rx="10" fill="#fff" stroke="#3d2b31" stroke-width="2.5"/><path d="M28 16v16M22 21l6-6 6 6" fill="none" stroke="#3b8bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 27v12h16V27" fill="none" stroke="#3b8bff" stroke-width="3" stroke-linejoin="round"/></svg>點「分享」<br>再「加入主畫面」</div>
+      </div>
+    </div>
+    <button class="candy green homebig" id="doneHome">🏠 回主畫面</button>
+  </section>
+
+  <!-- 我的 App -->
+  <section class="screen" id="s-apps" hidden>
+    <div class="card c4">
+      <div class="card-h"><span class="num">📱</span><h2>我的 App</h2></div>
+      <div class="sticker"><img src="img/boy.png" alt=""></div>
+      <p class="lead">點名字可以用新的 HTML 更新它；用不到的可以刪除，GitHub 上的專案和網站會一起刪掉。</p>
+      <div class="err" id="errApps" hidden></div>
+      <div class="okmsg" id="okApps" hidden></div>
+      <ul class="apps" id="apps"></ul>
+    </div>
+    <button class="candy green homebig" data-go="home">🏠 回主畫面</button>
+  </section>
+</main>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+const S={html:null,img:null,imgURL:null,login:'',checked:false,nameEdited:false,repoEdited:false,theme:'#ffffff',busy:false,from4:'wiz',screen:'home'};
+let hist=store.get('appmaker.history',null);
+if(!hist){hist=[{name:'蘇米比一比',repo:'Sumi',url:'https://barkuyu.github.io/Sumi/',icon:'https://barkuyu.github.io/Sumi/icon-192.png'}];store.set('appmaker.history',hist)}
+const HOST_REPO=location.hostname.endsWith('github.io')?(location.pathname.split('/')[1]||'').toLowerCase():'';
+const tokEl=$('#token');tokEl.value=store.get('appmaker.token','');
+const tok=()=>tokEl.value.trim();
+
+/* ---------- 畫面切換 ---------- */
+const WIZ=['1','2','3','4'];
+function go(id,push=true){
+  if(id==='4'&&S.from4==='wiz'&&S.login){id='3'}
+  document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!=='s-'+id);
+  S.screen=id;$('#bar').hidden=id==='home';renderDots();
+  if(id==='3')refresh3();
+  if(id==='apps')renderApps();
+  if(id==='4'){$('#nav4wiz').hidden=S.from4!=='wiz';$('#nav4home').hidden=S.from4==='wiz';$('#err4').hidden=true}
+  scrollTo({top:0,behavior:'auto'});
+  if(push)try{history.pushState({s:id},'')}catch(e){}
+}
+addEventListener('popstate',e=>go((e.state&&e.state.s)||'home',false));
+try{history.replaceState({s:'home'},'')}catch(e){}
+function renderDots(){
+  const d=$('#dots');d.innerHTML='';const id=S.screen;
+  if(!WIZ.includes(id)&&id!=='run'){return}
+  const steps=S.login&&id!=='4'?['1','2','3']:['1','2','3','4'];
+  const cur=id==='run'?'9':id;
+  steps.forEach((n,i)=>{if(i){const s=document.createElement('span');s.className='dash';d.appendChild(s)}
+    const b=document.createElement('span');b.className='dot c'+n+(n===cur?' on':(+n<+cur?' past':''));b.textContent=n;d.appendChild(b)});
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)go(b.dataset.go)});
+$('#toHome').addEventListener('click',()=>go('home'));
+$('#doneHome').addEventListener('click',()=>{resetWizard();go('home')});
+$('#startNew').addEventListener('click',()=>{resetWizard();go('1')});
+$('#openApps').addEventListener('click',()=>{go('apps');loadRemote()});
+$('#ghChip').addEventListener('click',()=>{S.from4='home';tokEl.value=tok();go('4')});
+$('#next1').addEventListener('click',()=>go('2'));
+
+function resetWizard(){
+  S.html=null;S.img=null;S.nameEdited=S.repoEdited=false;S.theme='#ffffff';
+  $('#htmlFile').value='';$('#imgFile').value='';$('#appName').value='';$('#repo').value='';
+  $('#htmlName').textContent='點這裡選擇 HTML 檔';$('#htmlInfo').textContent='會自動讀出 App 的名字';$('#htmlDrop').classList.remove('done');
+  clearImg();$('#updBanner').hidden=true;$('#next1').disabled=true;$('#glyph').value='A';
+}
+
+/* ---------- 1 讀 HTML ---------- */
+function unwrap(t){
+  const re=/<!doctype html/gi,ds=[];let m;while((m=re.exec(t)))ds.push(m.index);
+  if(ds.length>=2){const last=t.lastIndexOf('</html>');const end=t.lastIndexOf('</html>',last-1);if(end>ds[1])t=t.slice(ds[1],end+7)}
+  return t;
+}
+const fmtMB=n=>(n/1048576).toFixed(n>1048576*10?0:1)+' MB';
+$('#htmlFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  let t=await f.text();t=unwrap(t);S.html=t;
+  const m=t.match(/<title>([\s\S]*?)<\/title>/i);const title=m?m[1].trim():'';
+  const clean=title.replace(/[^\p{L}\p{N}\s\-_]/gu,'').trim();
+  const bg=t.match(/--bg\s*:\s*(#[0-9a-fA-F]{3,8})\b/);S.theme=bg?bg[1]:'#ffffff';
+  $('#htmlName').textContent=f.name;$('#htmlInfo').textContent=`${fmtMB(f.size)}${title?'・'+title:''}`;
+  $('#htmlDrop').classList.add('done');
+  if(!S.nameEdited&&clean)$('#appName').value=clean;
+  if(!S.img&&clean)$('#glyph').value=[...clean][0];
+  if(!S.repoEdited){const base=f.name.replace(/\.html?$/i,'').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'');
+    const same=hist.find(h=>h.name===clean);
+    if(same)$('#repo').value=same.repo;else if(/[A-Za-z]{2,}/.test(base))$('#repo').value=base.slice(0,40);}
+  $('#next1').disabled=false;preview();
+});
+
+/* ---------- 2 圖示 ---------- */
+function iconCanvas(size){
+  const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d');
+  if(S.img){const w=S.img.naturalWidth,h=S.img.naturalHeight,s=Math.min(w,h);g.imageSmoothingQuality='high';g.drawImage(S.img,(w-s)/2,(h-s)/2,s,s,0,0,size,size)}
+  else{g.fillStyle=$('#glyphColor').value;g.fillRect(0,0,size,size);const t=($('#glyph').value||'A').trim()||'A';
+    g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';
+    g.font=`900 ${Math.round(size*(t.length>1?0.4:0.58))}px "Chiron GoRound TC","Noto Sans TC",sans-serif`;g.fillText(t,size/2,size*0.54)}
+  return c;
+}
+function preview(){
+  const p=$('#pvIco');p.innerHTML='';p.appendChild(iconCanvas(136));
+  $('#pvLbl').textContent=$('#appName').value.trim()||'你的 App';
+}
+$('#imgFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(S.imgURL)URL.revokeObjectURL(S.imgURL);S.imgURL=URL.createObjectURL(f);
+  const im=new Image();
+  im.onload=()=>{S.img=im;const a=$('#imgArt');a.innerHTML='';a.appendChild(iconCanvas(156));
+    $('#imgName').textContent=f.name;$('#imgDrop').classList.add('done');$('#clearImg').hidden=false;preview()};
+  im.onerror=()=>{$('#imgName').textContent='這張圖片打不開，換一張 JPG 或 PNG 試試'};
+  im.src=S.imgURL;
+});
+const IMG_ART=$('#imgArt').innerHTML;
+function clearImg(){S.img=null;$('#imgFile').value='';$('#imgArt').innerHTML=IMG_ART;$('#imgName').textContent='點這裡選擇圖片';$('#imgDrop').classList.remove('done');$('#clearImg').hidden=true;preview()}
+$('#clearImg').addEventListener('click',clearImg);
+['glyph','glyphColor'].forEach(id=>$('#'+id).addEventListener('input',preview));
+
+/* ---------- 3 名稱與網址 ---------- */
+const repoOK=r=>/^[A-Za-z0-9._-]{1,100}$/.test(r)&&!/^\.+$/.test(r);
+function refresh3(){
+  const repo=$('#repo').value.trim();const who=(S.login||'你的帳號').toLowerCase();
+  $('#urlPreview').textContent=`https://${who}.github.io/${repo||'專案名稱'}/`;
+  const ready=!!S.html&&!!$('#appName').value.trim()&&repoOK(repo);
+  const b=$('#go3');b.disabled=!ready||S.busy;
+  b.textContent=(S.login||!S.checked&&tok())?'做成 App ✨':'下一步 ›';
+  b.classList.toggle('blue',!(S.login||!S.checked&&tok()));b.classList.toggle('green',!!(S.login||!S.checked&&tok()));
+  preview();
+}
+$('#appName').addEventListener('input',()=>{S.nameEdited=true;refresh3()});
+$('#repo').addEventListener('input',()=>{S.repoEdited=true;refresh3();checkRepoSoon()});
+let rt;function checkRepoSoon(){clearTimeout(rt);rt=setTimeout(checkRepo,500)}
+async function checkRepo(){
+  const chip=$('#repoChip');const repo=$('#repo').value.trim();
+  if(repo&&!repoOK(repo)){chip.hidden=false;chip.className='chip warn';chip.textContent='只能用英文、數字、- _ .';return}
+  if(!repo||!S.login){chip.hidden=true;return}
+  const r=await gh('GET',`/repos/${S.login}/${repo}`).catch(()=>null);
+  if(!r){chip.hidden=true;return}
+  chip.hidden=false;
+  if(r.ok){chip.className='chip warn';chip.textContent='已經有這個 App：會更新成新版'}else{chip.className='chip new';chip.textContent='✨ 新的 App'}
+}
+$('#go3').addEventListener('click',async()=>{
+  if(!S.login&&tok()){$('#go3').disabled=true;await whoami(true);$('#go3').disabled=false}
+  if(S.login)publish();else{S.from4='wiz';go('4')}
+});
+
+/* ---------- 4 GitHub 連線 ---------- */
+$('#remember').addEventListener('change',saveToken);
+function saveToken(){if($('#remember').checked&&tok())store.set('appmaker.token',tok());else store.del('appmaker.token')}
+async function connect(){
+  const e=$('#err4');e.hidden=true;
+  if(!tok()){e.textContent='請先貼上權杖。';e.hidden=false;return false}
+  saveToken();S.login='';
+  try{await whoami(false);return true}catch(x){e.textContent=x.message;e.hidden=false;return false}
+}
+$('#go4').addEventListener('click',async()=>{if(await connect())publish()});
+$('#save4').addEventListener('click',async()=>{if(await connect())go('home')});
+async function whoami(quiet){
+  if(!tok()){S.login='';S.checked=true;setGhChip();return null}
+  const r=await gh('GET','/user').catch(()=>null);S.checked=true;
+  if(r&&r.ok){S.login=r.data.login;setGhChip();return S.login}
+  S.login='';setGhChip(r?r.status:0);if(!quiet)throw new Error(ghMsg(r,'連線'));return null;
+}
+function setGhChip(status){const c=$('#ghChip');
+  if(S.login){c.textContent='✓ GitHub 已連線：'+S.login;c.className='chip ok'}
+  else if(status){c.textContent='⚠ GitHub 權杖無效，點這裡重新連線';c.className='chip warn'}
+  else{c.textContent='GitHub 尚未連線，點這裡設定';c.className='chip warn'}
+  renderDots();if(S.screen==='3')refresh3();}
+
+/* ---------- GitHub API ---------- */
+async function gh(method,path,body){
+  const r=await fetch('https://api.github.com'+path,{method,cache:'no-store',headers:{
+    'Authorization':'Bearer '+tok(),'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',
+    ...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  let data=null;try{data=await r.json()}catch(e){}
+  return {ok:r.ok,status:r.status,data};
+}
+function ghMsg(r,what){
+  if(!r)return `${what}時連不上 GitHub，請確認網路後再試一次。`;
+  if(r.status===401)return '權杖無效或已過期，請重新建立一個權杖貼上。';
+  if(r.status===403)return `權杖權限不夠（${what}）。建立權杖時要勾選「repo」。`;
+  const m=r.data&&r.data.message?r.data.message:'';
+  return `${what}失敗（GitHub 回應 ${r.status}${m?'：'+m:''}）。`;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function b64bytes(bytes){let s='';const CH=0x8000;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return btoa(s)}
+const b64text=t=>b64bytes(new TextEncoder().encode(t));
+
+/* ---------- 防縮放 ---------- */
+const VIEWPORT='<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">';
+const LOCK=document.getElementById('app-lock').outerHTML+'\n'+'<script id="app-lock-js">'+document.getElementById('app-lock-js').textContent+'<\/script>\n';
+function applyLock(t){
+  t=t.replace(/<meta[^>]+name=["']?viewport["']?[^>]*>/gi,'');
+  const add='\n'+VIEWPORT+'\n'+(/<style id="app-lock">/.test(t)?'':LOCK);
+  const m=t.match(/<meta[^>]+charset[^>]*>/i)||t.match(/<head[^>]*>/i);
+  if(m){const j=m.index+m[0].length;t=t.slice(0,j)+add+t.slice(j)}else t=add+t;
+  return t;
+}
+
+/* ---------- 產生 App 檔案 ---------- */
+function esc(s){return s.replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]))}
+function buildFiles(name){
+  let t=applyLock(S.html);
+  const tags=`<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="${esc(name)}">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+`;
+  if(!/rel=["']?manifest/i.test(t)){const i=t.toLowerCase().indexOf('</head>');if(i<0)throw new Error('這個 HTML 找不到 </head>，沒辦法加上 App 設定。');t=t.slice(0,i)+tags+t.slice(i)}
+  const reg="<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}<\/script>\n";
+  if(!t.includes("register('sw.js')")){const i=t.toLowerCase().lastIndexOf('</body>');t=i>=0?t.slice(0,i)+reg+t.slice(i):t+reg}
+  const manifest=JSON.stringify({name,short_name:name.slice(0,12),start_url:'./',scope:'./',display:'standalone',background_color:S.theme,theme_color:S.theme,
+    icons:[{src:'icon-192.png',sizes:'192x192',type:'image/png'},{src:'icon-512.png',sizes:'512x512',type:'image/png'},{src:'icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}]},null,2);
+  const sw=`const CACHE='app-${Math.floor(Date.now()/1000)}';
+const CORE=['./','./index.html','./manifest.json','./icon-180.png','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting()});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;
+ e.respondWith(fetch(e.request).then(r=>{if(r&&(r.ok||r.type==='opaque')){const cp=r.clone();caches.open(CACHE).then(c=>c.put(e.request,cp))}return r})
+ .catch(()=>caches.match(e.request,{ignoreSearch:true}).then(m=>m||caches.match('./index.html'))))});
+`;
+  const png=n=>iconCanvas(n).toDataURL('image/png').split(',')[1];
+  return [
+    {path:'index.html',b64:b64text(t),size:t.length},
+    {path:'manifest.json',b64:b64text(manifest)},
+    {path:'sw.js',b64:b64text(sw)},
+    {path:'icon-180.png',b64:png(180)},{path:'icon-192.png',b64:png(192)},{path:'icon-512.png',b64:png(512)}
+  ];
+}
+
+/* ---------- 製作 ---------- */
+const STEPS=['確認 GitHub 帳號','準備 App 檔案','建立或找到專案','上傳檔案','開啟網站功能','等網站上線'];
+function initSteps(){const ul=$('#steps');ul.innerHTML='';STEPS.forEach(s=>{const li=document.createElement('li');const sp=document.createElement('span');sp.textContent=s;li.appendChild(sp);ul.appendChild(li)})}
+function step(i,state,sub){const li=$('#steps').children[i];li.className=state;let sm=li.querySelector('small');
+  if(sub){if(!sm){sm=document.createElement('small');li.lastChild.appendChild(sm)}sm.textContent=sub}else if(sm)sm.remove()}
+$('#retry').addEventListener('click',()=>publish());
+async function publish(){
+  if(S.busy)return;S.busy=true;go('run');initSteps();$('#errRun').hidden=true;$('#runNav').hidden=true;
+  let cur=0;
+  try{
+    step(0,'run');const login=S.login||await whoami(false);step(0,'ok',login);
+    cur=1;step(1,'run');if(document.fonts)await document.fonts.load('900 100px "Chiron GoRound TC"').catch(()=>{});
+    const name=$('#appName').value.trim();let repo=$('#repo').value.trim();
+    const files=buildFiles(name);step(1,'ok',`${files.length} 個檔案・${fmtMB(files[0].size)}`);
+    cur=2;step(2,'run');
+    let r=await gh('GET',`/repos/${login}/${repo}`);let created=false;
+    if(r.status===404){r=await gh('POST','/user/repos',{name:repo,description:name,auto_init:true,private:false});if(!r.ok)throw new Error(ghMsg(r,'建立專案'));created=true}
+    else if(!r.ok)throw new Error(ghMsg(r,'讀取專案'));
+    repo=r.data.name;const branch=r.data.default_branch||'main';
+    step(2,'ok',created?`新專案 ${repo}`:`更新 ${repo}`);
+    cur=3;step(3,'run','上傳中，檔案大的話可能要一兩分鐘…');
+    let ref;for(let i=0;i<15;i++){ref=await gh('GET',`/repos/${login}/${repo}/git/ref/heads/${branch}`);if(ref.ok)break;await sleep(2000)}
+    if(!ref.ok)throw new Error(ghMsg(ref,'讀取專案內容'));
+    const head=ref.data.object.sha;
+    const hc=await gh('GET',`/repos/${login}/${repo}/git/commits/${head}`);if(!hc.ok)throw new Error(ghMsg(hc,'讀取專案內容'));
+    const tree=[];let k=0;
+    for(const f of files){const b=await gh('POST',`/repos/${login}/${repo}/git/blobs`,{content:f.b64,encoding:'base64'});
+      if(!b.ok)throw new Error(ghMsg(b,'上傳 '+f.path));tree.push({path:f.path,mode:'100644',type:'blob',sha:b.data.sha});step(3,'run',`已上傳 ${++k}/${files.length}`)}
+    const tr=await gh('POST',`/repos/${login}/${repo}/git/trees`,{base_tree:hc.data.tree.sha,tree});if(!tr.ok)throw new Error(ghMsg(tr,'整理檔案'));
+    const cm=await gh('POST',`/repos/${login}/${repo}/git/commits`,{message:`${created?'建立':'更新'} ${name}（HTML➡️APP）`,tree:tr.data.sha,parents:[head]});if(!cm.ok)throw new Error(ghMsg(cm,'存檔'));
+    const up=await gh('PATCH',`/repos/${login}/${repo}/git/refs/heads/${branch}`,{sha:cm.data.sha});if(!up.ok)throw new Error(ghMsg(up,'存檔'));
+    step(3,'ok','6 個檔案都上傳了');
+    cur=4;step(4,'run');
+    let pg=await gh('GET',`/repos/${login}/${repo}/pages`);
+    if(pg.status===404){pg=await gh('POST',`/repos/${login}/${repo}/pages`,{source:{branch,path:'/'}});if(!pg.ok&&pg.status!==409)throw new Error(ghMsg(pg,'開啟網站功能'))}
+    else if(!pg.ok)throw new Error(ghMsg(pg,'讀取網站設定'));
+    let url=(pg.data&&pg.data.html_url)||`https://${login.toLowerCase()}.github.io/${repo}/`;
+    if(!url.endsWith('/'))url+='/';
+    step(4,'ok');
+    cur=5;step(5,'run','通常要 1–2 分鐘');
+    saveHist(name,repo,url);
+    let done=false;
+    for(let i=0;i<36&&!done;i++){await sleep(5000);
+      const b=await gh('GET',`/repos/${login}/${repo}/pages/builds/latest`).catch(()=>null);
+      if(b&&b.ok&&b.data.commit===cm.data.sha){if(b.data.status==='built')done=true;else if(b.data.status==='errored')throw new Error('GitHub 建置網站時出錯，請按「再試一次」。')}
+    }
+    step(5,'ok',done?'網站已上線':'還在建置，再等一下就好');
+    showDone(url,created,done);
+  }catch(e){step(cur,'bad');const x=$('#errRun');x.textContent=e.message||String(e);x.hidden=false;$('#runNav').hidden=false}
+  finally{S.busy=false}
+}
+function saveHist(name,repo,url){
+  const icon=iconCanvas(96).toDataURL('image/png');
+  hist=[{name,repo,url,icon},...hist.filter(h=>h.repo.toLowerCase()!==repo.toLowerCase())].slice(0,50);store.set('appmaker.history',hist);
+}
+function showDone(url,created,live){
+  $('#doneUrl').textContent=url;$('#openUrl').href=url;
+  $('#doneMsg').textContent=created?'你的網頁已經變成 App 了，可以加到主畫面囉！':'App 已經更新成新版囉！';
+  $('#doneNote').textContent=live?(created?'網站已經上線。':'從主畫面打開 App（要連網）就會換成新版；沒變的話把 App 關掉再開一次。'):'GitHub 還在處理，網址打開若是 404，等一兩分鐘再重新整理。';
+  go('done');
+}
+$('#copyUrl').addEventListener('click',()=>copy($('#doneUrl').textContent,$('#copyUrl'),$('#doneUrl')));
+function copy(text,btn,el){
+  const ok=()=>{const o=btn.textContent;btn.textContent='已複製 ✓';setTimeout(()=>btn.textContent=o,1500)};
+  const fb=()=>{if(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}};
+  try{navigator.clipboard.writeText(text).then(ok,fb)}catch(e){fb()}
+}
+
+/* ---------- 我的 App ---------- */
+let confirmRepo='';
+function msgApps(kind,m){const e=$('#errApps'),o=$('#okApps');e.hidden=o.hidden=true;if(!m)return;const t=kind==='ok'?o:e;t.textContent=m;t.hidden=false}
+function renderApps(){
+  const ul=$('#apps');ul.innerHTML='';
+  if(!hist.length){ul.innerHTML='<li><span></span><span class="note">還沒有任何 App，回首頁按「做新的 App」開始吧！</span></li>';return}
+  for(const h of hist){const li=document.createElement('li');
+    if(confirmRepo===h.repo){
+      li.className='confirm';
+      li.innerHTML=`<p></p><div class="acts"><button class="candy red sm" type="button" data-a="yes">確定刪除</button><button class="candy soft sm" type="button" data-a="no">取消</button></div>`;
+      li.querySelector('p').textContent=`要刪除「${h.name}」嗎？GitHub 上的「${h.repo}」專案、裡面的 HTML 和網站會全部刪掉，無法復原。`;
+      li.querySelector('[data-a=yes]').addEventListener('click',e=>removeApp(h,e.currentTarget));
+      li.querySelector('[data-a=no]').addEventListener('click',()=>{confirmRepo='';renderApps()});
+      ul.appendChild(li);continue;
+    }
+    li.innerHTML=`<div class="ico"></div><div class="t"><b></b><span></span></div><div class="acts"><button class="candy sm" type="button" data-a="upd">更新</button><button class="candy blue sm" type="button" data-a="copy">複製</button><button class="candy soft sm" type="button" data-a="del">🗑 刪除</button></div>`;
+    const ico=li.querySelector('.ico');ico.textContent=[...h.name][0]||'A';
+    if(h.icon){const img=new Image();img.alt='';img.onload=()=>{ico.textContent='';ico.appendChild(img)};img.src=h.icon}
+    li.querySelector('b').textContent=h.name;li.querySelector('span').textContent=h.url;
+    li.querySelector('[data-a=copy]').addEventListener('click',e=>copy(h.url,e.currentTarget,li.querySelector('span')));
+    const upd=()=>{resetWizard();$('#repo').value=h.repo;$('#appName').value=h.name;S.repoEdited=S.nameEdited=true;
+      const b=$('#updBanner');b.textContent=`正在更新「${h.name}」：選新的 HTML 檔就好。`;b.hidden=false;go('1')};
+    li.querySelector('[data-a=upd]').addEventListener('click',upd);li.querySelector('.t').addEventListener('click',upd);
+    li.querySelector('[data-a=del]').addEventListener('click',()=>{
+      msgApps();
+      if(HOST_REPO&&h.repo.toLowerCase()===HOST_REPO){msgApps('err',`「${h.repo}」裡面放著這個工具本身，刪掉的話工具也會不見，所以不能在這裡刪除。`);return}
+      confirmRepo=h.repo;renderApps()});
+    ul.appendChild(li)}
+}
+async function removeApp(h,btn){
+  msgApps();
+  if(!tok()){msgApps('err','要先連上 GitHub 才能刪除，回首頁點「GitHub 尚未連線」設定。');return}
+  btn.disabled=true;btn.textContent='刪除中…';
+  try{
+    const login=S.login||await whoami(false);
+    const r=await gh('DELETE',`/repos/${login}/${h.repo}`);
+    if(r.status===403)throw new Error('權杖沒有刪除權限。請回首頁點 GitHub 連線，用新的權杖（連結會自動勾好 delete_repo）重新連線。');
+    if(!r.ok&&r.status!==404)throw new Error(ghMsg(r,'刪除專案'));
+    hist=hist.filter(x=>x.repo.toLowerCase()!==h.repo.toLowerCase());store.set('appmaker.history',hist);confirmRepo='';renderApps();
+    msgApps('ok',`已刪除「${h.name}」。手機主畫面上的圖示要自己長按移除。`);
+  }catch(e){btn.disabled=false;btn.textContent='確定刪除';msgApps('err',e.message||String(e))}
+}
+async function loadRemote(){
+  if(!S.login&&tok())await whoami(true);
+  if(!S.login)return;
+  const r=await gh('GET','/user/repos?per_page=100&type=owner&sort=pushed').catch(()=>null);
+  if(!r||!r.ok||!Array.isArray(r.data))return;
+  const names=new Set(r.data.map(x=>x.name.toLowerCase()));
+  hist=hist.filter(h=>names.has(h.repo.toLowerCase()));
+  for(const x of r.data.filter(x=>x.has_pages&&x.name.toLowerCase()!==`${S.login.toLowerCase()}.github.io`)){
+    if(hist.some(h=>h.repo.toLowerCase()===x.name.toLowerCase()))continue;
+    const url=`https://${S.login.toLowerCase()}.github.io/${x.name}/`;
+    hist.push({name:x.description||x.name,repo:x.name,url,icon:url+'icon-192.png'});
+  }
+  store.set('appmaker.history',hist);if(S.screen==='apps')renderApps();
+}
+
+/* ---------- 開始 ---------- */
+preview();
+if(tok())whoami(true).then(()=>{checkRepoSoon()});else{S.checked=true;setGhChip()}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+})();
+</script>
+</body>
+</html>
