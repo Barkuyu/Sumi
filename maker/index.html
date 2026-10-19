@@ -2,7 +2,15 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style id="app-lock">html{-webkit-text-size-adjust:100%;text-size-adjust:100%}:where(html,body,*){touch-action:manipulation}</style>
+<script id="app-lock-js">(function(){var s={passive:false},p=function(e){e.preventDefault()};
+['gesturestart','gesturechange','gestureend'].forEach(function(t){document.addEventListener(t,p,s)});
+document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault()},s);
+document.addEventListener('dblclick',p,s);
+addEventListener('wheel',function(e){if(e.ctrlKey)e.preventDefault()},s);
+addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&/^[=+\-0]$/.test(e.key))e.preventDefault()});})();</script>
+
 <title>App 工坊</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -335,6 +343,25 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function b64bytes(bytes){let s='';const CH=0x8000;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return btoa(s)}
 const b64text=t=>b64bytes(new TextEncoder().encode(t));
 
+/* ---------- 防縮放：鎖住雙指縮放、連點放大、輸入框自動放大 ---------- */
+const VIEWPORT='<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">';
+const LOCK=`<style id="app-lock">html{-webkit-text-size-adjust:100%;text-size-adjust:100%}:where(html,body,*){touch-action:manipulation}</style>
+<script id="app-lock-js">(function(){var s={passive:false},p=function(e){e.preventDefault()};
+['gesturestart','gesturechange','gestureend'].forEach(function(t){document.addEventListener(t,p,s)});
+document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault()},s);
+document.addEventListener('dblclick',p,s);
+addEventListener('wheel',function(e){if(e.ctrlKey)e.preventDefault()},s);
+addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&/^[=+\\-0]$/.test(e.key))e.preventDefault()});})();<\/script>
+`;
+function applyLock(t){
+  const vre=/<meta[^>]+name=["']?viewport["']?[^>]*>/gi;
+  if(vre.test(t))t=t.replace(vre,'');
+  const add='\n'+VIEWPORT+'\n'+(/<style id="app-lock">/.test(t)?'':LOCK);
+  let m=t.match(/<meta[^>]+charset[^>]*>/i)||t.match(/<head[^>]*>/i);
+  if(m){const j=m.index+m[0].length;t=t.slice(0,j)+add+t.slice(j)}else t=add+t;
+  return t;
+}
+
 /* ---------- 產生 App 檔案 ---------- */
 function esc(s){return s.replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]))}
 function buildFiles(name){
@@ -348,6 +375,7 @@ function buildFiles(name){
 <link rel="manifest" href="manifest.json">
 `;
   if(!/rel=["']?manifest/i.test(t)){const i=t.toLowerCase().indexOf('</head>');if(i<0)throw new Error('這個 HTML 找不到 </head>，沒辦法加上 App 設定。');t=t.slice(0,i)+tags+t.slice(i)}
+  t=applyLock(t);
   const reg="<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}<\/script>\n";
   if(!t.includes("register('sw.js')")){const i=t.toLowerCase().lastIndexOf('</body>');t=i>=0?t.slice(0,i)+reg+t.slice(i):t+reg}
   const manifest=JSON.stringify({name,short_name:name.slice(0,12),start_url:'./',scope:'./',display:'standalone',background_color:S.theme,theme_color:S.theme,
