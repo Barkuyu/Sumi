@@ -54,6 +54,18 @@ button{font-family:inherit}
 .cloud::after{width:60px;height:60px;left:92px;top:-26px}
 .deco svg{position:absolute}
 
+/* 首頁飄浮愛心：淡淡的、在內容後面、點不到 */
+.hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.hearts i{position:absolute;bottom:-40px;display:block;width:var(--s);height:var(--s);opacity:0;
+  background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff7aa6' d='M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E");
+  animation:heartUp var(--d) linear forwards}
+@keyframes heartUp{
+  0%{transform:translate(0,0) rotate(-8deg);opacity:0}
+  12%{opacity:var(--o)}
+  50%{transform:translate(var(--x),-55vh) rotate(8deg)}
+  85%{opacity:var(--o)}
+  100%{transform:translate(calc(var(--x) * -.4),-110vh) rotate(-6deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.hearts{display:none}}
 .wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
 /* 頂列：回首頁 + 步驟點 */
@@ -197,6 +209,7 @@ input[type=text]:focus,input[type=password]:focus{border-color:var(--c);outline:
 </style>
 </head>
 <body>
+<div class="hearts" id="hearts" aria-hidden="true"></div>
 <div class="deco" aria-hidden="true">
   <div class="cloud" style="left:-60px;top:16%"></div>
   <div class="cloud" style="right:-80px;top:44%;transform:scale(.8)"></div>
@@ -369,7 +382,7 @@ const WIZ=['1','2','3','4'];
 function go(id,push=true){
   if(id==='4'&&S.from4==='wiz'&&S.login){id='3'}
   document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!=='s-'+id);
-  S.screen=id;$('#bar').hidden=id==='home';renderDots();
+  S.screen=id;$('#bar').hidden=id==='home';renderDots();$('#hearts').hidden=id!=='home';
   if(id==='3')refresh3();
   if(id==='apps')renderApps();
   if(id==='4'){$('#nav4wiz').hidden=S.from4!=='wiz';$('#nav4home').hidden=S.from4==='wiz';$('#err4').hidden=true}
@@ -692,6 +705,24 @@ async function loadRemote(){
 }
 
 /* ---------- 開始 ---------- */
+/* ---------- 首頁飄浮愛心 ---------- */
+(function(){
+  const box=$('#hearts');
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  function spawn(){
+    if(S.screen!=='home'||document.hidden||box.childElementCount>14)return;
+    const h=document.createElement('i');const r=Math.random;
+    h.style.left=(4+r()*92)+'%';
+    h.style.setProperty('--s',(10+r()*12).toFixed(0)+'px');
+    h.style.setProperty('--d',(7+r()*5).toFixed(1)+'s');
+    h.style.setProperty('--o',(.22+r()*.2).toFixed(2));
+    h.style.setProperty('--x',((r()-.5)*70).toFixed(0)+'px');
+    h.addEventListener('animationend',()=>h.remove());
+    box.appendChild(h);
+  }
+  for(let i=0;i<3;i++)setTimeout(spawn,i*500);
+  setInterval(spawn,900);
+})();
 preview();
 if(tok())whoami(true).then(()=>{checkRepoSoon()});else{S.checked=true;setGhChip()}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));

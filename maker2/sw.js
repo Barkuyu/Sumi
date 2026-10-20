@@ -1,4 +1,4 @@
-const CACHE='h2a-1';
+const CACHE='h2a-2';
 const CORE=['./','./index.html','./manifest.json','./icon-180.png','./icon-192.png','./icon-512.png','./img/girl.png','./img/boy.png','./img/girl2.png','./img/boy2.png','./img/s5.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
